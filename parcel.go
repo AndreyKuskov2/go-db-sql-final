@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 )
 
 type ParcelStore struct {
@@ -21,12 +22,12 @@ func (s ParcelStore) Add(p Parcel) (int, error) {
 		sql.Named("created_at", p.CreatedAt),
 	)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("sql query doesn't exec: %w", err)
 	}
 	// верните идентификатор последней добавленной записи
 	lastId, err := res.LastInsertId()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error get last insert id: %w", err)
 	}
 	return int(lastId), nil
 }
@@ -41,7 +42,7 @@ func (s ParcelStore) Get(number int) (Parcel, error) {
 	row := s.db.QueryRow("SELECT * FROM parcel where number = :number", sql.Named("number", number))
 	err := row.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt)
 	if err != nil {
-		return Parcel{}, err
+		return Parcel{}, fmt.Errorf("scan failed %w", err)
 	}
 
 	return p, nil
@@ -56,7 +57,7 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 
 	rows, err := s.db.Query("SELECT * FROM parcel where client = :client", sql.Named("client", client))
 	if err != nil {
-		return res, err
+		return nil, fmt.Errorf("sql query doesn't exec: %w", err)
 	}
 	defer rows.Close()
 
@@ -65,9 +66,13 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 
 		err = rows.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt)
 		if err != nil {
-			return res, err
+			return nil, fmt.Errorf("scan failed %w", err)
 		}
 		res = append(res, p)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
 	}
 
 	return res, nil
@@ -80,7 +85,7 @@ func (s ParcelStore) SetStatus(number int, status string) error {
 		sql.Named("number", number),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("sql query doesn't exec: %w", err)
 	}
 	return nil
 }
@@ -95,7 +100,7 @@ func (s ParcelStore) SetAddress(number int, address string) error {
 		sql.Named("status", ParcelStatusRegistered),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("sql query doesn't exec: %w", err)
 	}
 	return nil
 }
@@ -108,7 +113,7 @@ func (s ParcelStore) Delete(number int) error {
 		sql.Named("status", ParcelStatusRegistered),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("sql query doesn't exec: %w", err)
 	}
 	return nil
 }
